@@ -8,18 +8,98 @@ output:
 
 ## Loading and preprocessing the data
 
+```{r, echo = TRUE}
+workDir = "/Users/gralspaugh/Google Drive/Coursera/Data Science Specialization/coursera_repo/reproducible_research/courseProject1"
+if(!file.exists(workDir))
+{dir.create(workDir)}
 
-
+dataURL <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+dataZIP <- paste(workDir, "activities.zip", sep = "/")
+download.file(dataURL, dataZIP)
+dataConn <- unz(dataZIP, "activity.csv")
+data <- read.csv(dataConn)
+```
 ## What is mean total number of steps taken per day?
+```{r, echo = TRUE}
+library(dplyr)
+library(ggplot2)
+groupByDay <- group_by(data, date)
+totalStepsFrame <- summarize(groupByDay, totalSteps = sum(steps, na.rm = TRUE))
 
+histSteps <- qplot(totalSteps, data = totalStepsFrame)
+histSteps
+
+meanSPD <- mean(totalStepsFrame$totalSteps)
+medSPD <- median(totalStepsFrame$totalSteps)
+meanSPD
+medSPD
+```
 
 
 ## What is the average daily activity pattern?
 
+```{r, echo=TRUE}
+groupByInt <- group_by(data, interval)
+meanStepsFrame <- summarize(groupByInt, meanSteps = mean(steps, na.rm = TRUE))
+timeSeries <- qplot(interval, meanSteps, data = meanStepsFrame, geom = "line")
+timeSeries
 
+maxMeanSteps <- max(meanStepsFrame$meanSteps)
+intMax <- meanStepsFrame[meanStepsFrame$meanSteps == maxMeanSteps,]
+intMax
+```
 
 ## Imputing missing values
+```{r, echo=TRUE}
+totalNAs <- sum(is.na(data))
+totalNAs
+
+# copyData <- data
+# INT <- data$interval[1]
+# INTmatch <- meanStepsFrame[meanStepsFrame$interval == INT,]
+# meanRep <- INTmatch$meanSteps
+# data$steps[1] <- meanRep
+noNAsData <- data
+for(i in 1:nrow(noNAsData)) {
+        if(is.na(noNAsData$steps[i])==TRUE) {
+                INT <- noNAsData$interval[i]
+                INTmatch <- meanStepsFrame[meanStepsFrame$interval == INT,]
+                meanRep <- INTmatch$meanSteps
+                noNAsData$steps[i] <- meanRep
+        }
+}
+groupByDay2 <- group_by(noNAsData, date)
+totalStepsFrame2 <- summarize(groupByDay2, totalSteps = sum(steps))
+
+histSteps2 <- qplot(totalSteps, data = totalStepsFrame2)
+histSteps2
+
+meanSPD2 <- mean(totalStepsFrame2$totalSteps)
+medSPD2 <- median(totalStepsFrame2$totalSteps)
+meanSPD2
+medSPD2
 
 
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+``` {r, echo=TRUE}
+weekendData <- noNAsData
+weekendDataEdit <- mutate(weekendData, weekday = weekdays(as.Date(date)))
+for(i in 1:nrow(weekendDataEdit)) {
+        if(weekendDataEdit$weekday[i] == "Saturday" | weekendDataEdit$weekday[i] == "Sunday"){
+                weekendDataEdit$weekday[i] <- "weekend"
+        }
+        else {
+                weekendDataEdit$weekday[i] <- "weekday"
+        }
+}
+weekendDataEdit <- mutate(weekendDataEdit, weekday = as.factor(weekday))
+groupByInt2 <- group_by(weekendDataEdit, interval, weekday)
+timeSeriesFrame <- summarize(groupByInt2, meanSteps = mean(steps))
+qplot(interval, meanSteps, data = timeSeriesFrame, facets = weekday ~ ., geom = "line")
+
+
+
+```
